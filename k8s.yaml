@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  selector:
+    app: db
+  ports:
+    - protocol: TCP
+      port: 27017
+      targetPort: 27017
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: website-service
+spec:
+  selector:
+    app: app
+  ports:
+    - name: port1
+      protocol: TCP
+      port: 5173
+      targetPort: 5173
+    - name: port2
+      protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: NodePort
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  labels:
+    app: db
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+      - name: db
+        image: mongo:7.0.2-jammy
+        ports:
+        - containerPort: 27017
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          value: root
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          value: password
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  labels:
+    app: app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: app
+        image: w453y/wec-task-containerization:latest
+        ports:
+        - containerPort: 5000
+        - containerPort: 5173
