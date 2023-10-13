@@ -6,6 +6,7 @@
 - [Building the Docker Image](#building-the-docker-image)
 - [Pushing Image to DockerHub](#pushing-image-to-dockerhub)
 - [Kubernetes Deployment](#kubernetes-deployment)
+- [Github Workflow](#github-workflow)
 
 ## Cloning the Repository
 ```bash
@@ -210,3 +211,38 @@ spec:
         - containerPort: 5173
 ```
 
+## Github Workflow
+
+Created .yml file for github actions and configured it as shown below.
+
+```bash
+name: Build and Push Docker Images to DockerHub
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Login to DockerHub
+      run: docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and tag Docker images
+      run: |
+        docker build -t w453y/wec-task-containerization:latest .
+        docker tag w453y/wec-task-containerization:latest w453y/wec-task-containerization:latest
+
+    - name: Push Docker images
+      run: |
+        docker push w453y/wec-task-containerization:latest
+```
+Github Actions worked without any errors as show below
+
+![actions](./screenshots/png6.png?raw=true "actions")
