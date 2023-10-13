@@ -1,134 +1,212 @@
-# IRIS Code In 107 Task-2 
-
-## Installation Steps:
-
-1. Install nodejs and npm on your device.
-2. Clone the repository to your local system.
-3. In the root folder, create a '.env' file.
-4. Create a MongoDB server and get the MongoDB URI.
-5. Add env variables as "MONGO_URI" to the .env file
-6. Add a PORT variable and JWT_SECRET variable too.
-7. Set PORT = 5000
-8. Set JWT_SECRET as a string of your choice.
+# Dockerizing Mern-Application
 
 
-## Steps to run the project
+## Table of Contents
+- [Cloning the Repository](#cloning-the-repository)
+- [Building the Docker Image](#building-the-docker-image)
+- [Pushing Image to DockerHub](#pushing-image-to-dockerhub)
+- [Kubernetes Deployment](#kubernetes-deployment)
 
-1. Open up the command terminal from the root directory and type `npm start` to start the backend server.
+## Cloning the Repository
+```bash
+git clone https://github.com/puranikvinit/mern-application.git
+```
+## Building the Docker Image
 
-2. Open another command prompt and type the following to start the frontend.  
-`cd frontend`  
-`npm run dev`
+1. Created a Dockerfile with the configuration given below to build an image and run it on container.
+```bash
+FROM node:14.21.3-alpine
 
-3. The application would be run on http://127.0.0.1:5173/
+WORKDIR /app
+COPY ./package.json package.json
+COPY ./package-lock.json package-lock.json
+COPY ./.env .env
+COPY ./start.sh start.sh
+COPY ./backend backend/
+COPY ./frontend frontend/
+COPY ./screenshots screenshots/
+RUN npm install && \
+    cd frontend && \
+    npm install && \
+    cd .. && \
+    chmod +x start.sh
+CMD ["/app/start.sh"]
+```
+2. Created docker-compose file with the configuration given below to run both app and database on the same network.
+```bash
+version: "3.1"
 
-4. An admin user will be created in the database  
+services:
 
-    Email : admin@nitk.edu.in  
-    Password: admin123
+  app:
+    build:
+      context: .
+    ports:
+      - 5173:5173
+      - 5000:5000
+    expose:
+      - "5000"
+    depends_on:
+      - db
 
-## List of implemented features
+  db:
+    image: mongo:7.0.2-jammy
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    ports:
+      - "27017:27017"
+    expose:
+      - "27017"
+```
+3. As backend and frontend running on same container ( can't specify two entry point for the container ), so created a script which start backend and frontend service in the container with below configuration and added script as a entry point for the container.
+```bash
+#!/bin/sh
 
-* Register and Login User
-* Each user gets a unique avatar
-* Users can only register with NITK email id
-* Different roles like Admin, Internship Coordinator, Placement Coordinator and User.
-* List of categories with ability to add and delete category for the admin
-* List of Users with their information
-* Admin can change allowed categories for each user and handle their roles and status.
-* Internship and Placement coordinators can edit the User status.
-* User Dashboard where a user can see the categories he can write about and the gyans he has already wrote.
-* List of Gyans
-* Seperate page for each Gyan with an accordion
-* Forms to add and edit gyans
-* Pagination on the Gyan Page
-* Filtering based on category and User branch
+cd /app && npm start &
+cd /app/frontend && npm run dev
+```
+4. Now its time to run ```docker compose up --build``` and the containers are up, as shown below.
 
-## List of planned features
+![app_container](./screenshots/png1.png?raw=true "app_container")
 
-* User authentication with Google OAuth
-* Better and responsive UI
-* Charts to show metadata about the gyans
-* Dark mode
-* More filtering options
+As the container is running but web page doesn't load in the browser, as shown below
 
-## List of known bugs
-* The pagination only lets the filter to apply on the current Gyans being rendered on the page.
-* On deleting a category, a question or a user, the documents in which they were refered are not deleted. This renders them as null on populating from the database and breaks the application.
-* On smaller screen, the UI breaks
-* A user should be able to write a single gyan and each topic but he can write multiple of them.
+![error_browser](./screenshots/png2.png?raw=true "error_browser")
 
-## References
-* Stack Overflow
-* LogRocket blog
-* Tailwind CSS docs
-* W3School
-* Jason Watmore's blog
-* Mongoose JS docs
-* Formik docs
-* Medium articles
+So to fix this, added this line ``` "dev": "vite --host" ``` in frontend/package.json, again build the image and web-site works correctly as show below
 
-## Screenshots
+![web_page1](./screenshots/png3.png?raw=true "web_page")
 
-Register Form
+5. As mentioned in the task " Expose only the required ports " due to this made some changes in docker-compose file and map only frontend port (5173) with localhost and exposed other ports i.e backend (5000) & database (27017) as shown below.
+```bash
+version: "3.1"
 
-![Register Form](./screenshots/1.png?raw=true "Register Form")
+services:
 
+  app:
+    build:
+      context: .
+    ports:
+      - 5173:5173
+    expose:
+      - "5000"
+    depends_on:
+      - db
 
-Login Form
+  db:
+    image: mongo:7.0.2-jammy
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    expose:
+      - "27017"
+```
+After making changes the frontend is working well but whenever frontend wants to fetch files from backend it can't reach backend, this happed because the frontend is expecting backend runs on localhost:5000 ( by default in frontend code the backend uri is localhost:5000) so it try to send request on port 5000 of localhost. As shown below
 
-![Login Form](./screenshots/3.png?raw=true "Login Form")
+![backend_error](./screenshots/png4.png?raw=true "backend_error")
 
-User List
+To solve this error we can use socat to flood incoming traffic from localhost:5000 to <container_ip>:5000
+```bash
+socat TCP-LISTEN:5000,fork,reuseaddr TCP-CONNECT:<container_ip>:5000
+```
+![backend_solved](./screenshots/png5.png?raw=true "backend_solved")
 
-![User List](./screenshots/5.png?raw=true "User List")
+## Pushing Image to DockerHub
 
-User Details (1)
+1. Taging the image ``` docker tag mern-application-app:latest w453y/wec-task-containerization:latest ```
+2. Push image to docker hub ``` docker push w453y/wec-task-containerization:latest ```
 
-![User Details (1)](./screenshots/6.png?raw=true "User Details (1)")
+## Kubernetes Deployment
 
-User Details (2)
+Created a manifest file with the below configurations.
+```bash
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  selector:
+    app: db
+  ports:
+    - protocol: TCP
+      port: 27017
+      targetPort: 27017
 
-![User Details (2)](./screenshots/7.png?raw=true "User Details (2)")
+---
 
-Edit User Form
+apiVersion: v1
+kind: Service
+metadata:
+  name: website-service
+spec:
+  selector:
+    app: app
+  ports:
+    - name: port1
+      protocol: TCP
+      port: 5173
+      targetPort: 5173
+    - name: port2
+      protocol: TCP
+      port: 5000
+      targetPort: 5000
+  type: NodePort
 
-![Edit User](./screenshots/8.png?raw=true "Edit User")
-List of Gyans
+---
 
-![List of Gyans](./screenshots/9.png?raw=true "List of Gyans")
-Filtering
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: db
+  labels:
+    app: db
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: db
+  template:
+    metadata:
+      labels:
+        app: db
+    spec:
+      containers:
+      - name: db
+        image: mongo:7.0.2-jammy
+        ports:
+        - containerPort: 27017
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          value: root
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          value: password
 
-![Filtering](./screenshots/10.png?raw=true "Filtering")
-List of Categories
+---
 
-![List of Categories](./screenshots/11.png?raw=true "List of Categories")
-Add Category
-
-![Add Category](./screenshots/12.png?raw=true "Add Category")
-List of Questions in a category
-
-![List of Questions in a category](./screenshots/13.png?raw=true "List of Questions in a category")
-
-User Dashboard (1)
-
-![UserDashboard](./screenshots/14.png?raw=true "User Dashboard")
-
-User Dashboard (2)
-
-![UserDashboard](./screenshots/15.png?raw=true "User Dashboard")
-
-Single Gyan
-
-![Single Gyan](./screenshots/16.png?raw=true "Single Gyan")
-
-
-
-CREDITS: [Harshit Gupta](https://github.com/hgupta12)
-
-
-
-
-
-
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  labels:
+    app: app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app
+  template:
+    metadata:
+      labels:
+        app: app
+    spec:
+      containers:
+      - name: app
+        image: w453y/wec-task-containerization:latest
+        ports:
+        - containerPort: 5000
+        - containerPort: 5173
+```
 
