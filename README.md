@@ -105,7 +105,7 @@ services:
     expose:
       - "27017"
 ```
-After making changes the frontend is working well but whenever frontend wants to fetch files from backend it can't reach backend, this happed because the frontend is expecting backend runs on localhost:5000 ( by default in frontend code the backend uri is localhost:5000) so it try to send request on port 5000 of localhost. As shown below
+After making changes the frontend is working well but whenever frontend wants to fetch files from backend it can't reach backend, this happened because the frontend is expecting that backend runs on localhost:5000 ( by default in frontend code the backend uri is localhost:5000) so it try to send request on port 5000 of localhost. As shown below
 
 ![backend_error](./screenshots/png4.png?raw=true "backend_error")
 
