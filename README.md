@@ -165,7 +165,6 @@ metadata:
   labels:
     app: db
 spec:
-  replicas: 3
   selector:
     matchLabels:
       app: db
@@ -194,7 +193,6 @@ metadata:
   labels:
     app: app
 spec:
-  replicas: 3
   selector:
     matchLabels:
       app: app
@@ -208,7 +206,11 @@ spec:
         image: w453y/wec-task-containerization:latest
         ports:
         - containerPort: 5000
+          hostPort: 5000
+          protocol: TCP
         - containerPort: 5173
+          hostPort: 5173
+          protocol: TCP
 ```
 
 ## Github Workflow
