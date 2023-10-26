@@ -215,7 +215,7 @@ spec:
 
 ## Github Workflow
 
-Created .yml file for github actions and configured it as shown below.
+Created .yml file for github actions and configured it as shown
 
 ```bash
 name: Build and Push Docker Images to DockerHub
